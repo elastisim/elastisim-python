@@ -45,7 +45,7 @@ class Job:
     assigned_node_ids = []
     assigned_num_gpus_per_node = None
     arguments = {}
-    job_hints = {}
+    attributes = {}
     total_phase_count = None
     completed_phases = None
     modified = False
@@ -74,8 +74,8 @@ class Job:
         self.assigned_num_gpus_per_node = job["assigned_num_gpus_per_node"]
         if 'arguments' in job:
             self.arguments = job['arguments']
-        if 'job_hints' in job:
-            self.job_hints = job['job_hints']
+        if 'attributes' in job:
+            self.attributes = job['attributes']
         self.total_phase_count = job['total_phase_count']
         self.completed_phases = job['completed_phases']
 
