@@ -12,7 +12,6 @@ class JobType(Enum):
     RIGID = 0
     MOLDABLE = 1
     MALLEABLE = 2
-    EVOLVING = 3
 
 
 class JobState(Enum):
@@ -26,8 +25,8 @@ class JobState(Enum):
 
 class Job:
     identifier = None
+    type = None
     state = None
-    malleable = None
     walltime = None
     num_nodes = None
     num_gpus_per_node = None
