@@ -78,6 +78,14 @@ class Job:
         self.total_phase_count = job['total_phase_count']
         self.completed_phases = job['completed_phases']
 
+    def __eq__(self, other):
+        if isinstance(other, Job):
+            return self.identifier == other.identifier
+        return False
+
+    def __hash__(self):
+        return hash(self.identifier)
+
     def __lt__(self, other):
         return self.submit_time < other.submit_time
 
@@ -117,9 +125,11 @@ class GpuState(Enum):
 
 
 class Gpu:
+    identifier = None
     state = None
 
     def __init__(self, gpu):
+        self.identifier = gpu['id']
         self.state = GpuState(gpu['state'])
 
 
@@ -137,14 +147,14 @@ class NodeState(Enum):
 
 class Node:
     identifier = None
-    node_type = None
+    type = None
     state = None
     assigned_job_ids = None
     gpus = None
 
     def __init__(self, node):
         self.identifier = node['id']
-        self.node_type = NodeType(node['type'])
+        self.type = NodeType(node['type'])
         self.state = NodeState(node['state'])
         self.assigned_jobs = None
         self.assigned_job_ids = set(node['assigned_jobs'])
