@@ -87,7 +87,7 @@ class Job:
         return hash(self.identifier)
 
     def __lt__(self, other):
-        return self.submit_time < other.submit_time
+        return self.identifier < other.identifier
 
     def assign(self, nodes):
         if self.kill_flag:
