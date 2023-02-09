@@ -11,6 +11,14 @@ from enum import Enum
 from elastisim_python import Job, Node
 
 
+class InvocationType(Enum):
+    INVOKE_PERIODIC = 0
+    INVOKE_JOB_SUBMIT = 1
+    INVOKE_JOB_COMPLETED = 2
+    INVOKE_JOB_KILLED = 3
+    INVOKE_SCHEDULING_POINT = 4
+
+
 class CommunicationCode(Enum):
     ZMQ_INVOKE_SCHEDULING = 0xFFEC4400
     ZMQ_SCHEDULED = 0xFFEC4401
@@ -30,7 +38,8 @@ def pass_algorithm(schedule, url):
     socket.connect(url)
     while True:
         message = socket.recv_json()
-        if message['code'] == CommunicationCode.ZMQ_INVOKE_SCHEDULING.value:
+        code = CommunicationCode(message['code'])
+        if code == CommunicationCode.ZMQ_INVOKE_SCHEDULING:
             jobs = []
             for job in message['jobs']:
                 jobs.append(Job(job))
@@ -40,14 +49,18 @@ def pass_algorithm(schedule, url):
             link(jobs, nodes)
             system = {}
             system['time'] = message['time']
+            system['invocation_type'] = InvocationType(message['invocation_type'])
+            job = None
+            if system['invocation_type'] != InvocationType.INVOKE_PERIODIC:
+                job = jobs[message['job_id']]
             system['pfs_read_bw'] = message['pfs_read_bw']
             system['pfs_write_bw'] = message['pfs_write_bw']
             system['pfs_read_utilization'] = message['pfs_read_utilization']
             system['pfs_write_utilization'] = message['pfs_write_utilization']
-            schedule(jobs, nodes, system)
+            schedule(jobs, nodes, system, job)
             message = dict(code=CommunicationCode.ZMQ_SCHEDULED.value,
                            jobs=[job.to_dict() for job in jobs if job.modified])
             socket.send_json(message)
-        elif message['code'] == CommunicationCode.ZMQ_FINALIZE.value:
+        elif code == CommunicationCode.ZMQ_FINALIZE:
             break
     socket.close()
