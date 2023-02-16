@@ -50,14 +50,13 @@ def pass_algorithm(schedule, url):
             system = {}
             system['time'] = message['time']
             system['invocation_type'] = InvocationType(message['invocation_type'])
-            job = None
             if system['invocation_type'] != InvocationType.INVOKE_PERIODIC:
-                job = jobs[message['job_id']]
+                system['job'] = jobs[message['job_id']]
             system['pfs_read_bw'] = message['pfs_read_bw']
             system['pfs_write_bw'] = message['pfs_write_bw']
             system['pfs_read_utilization'] = message['pfs_read_utilization']
             system['pfs_write_utilization'] = message['pfs_write_utilization']
-            schedule(jobs, nodes, system, job)
+            schedule(jobs, nodes, system)
             message = dict(code=CommunicationCode.ZMQ_SCHEDULED.value,
                            jobs=[job.to_dict() for job in jobs if job.modified])
             socket.send_json(message)
