@@ -6,4 +6,4 @@
 # BSD License. See the LICENSE file in the base directory for details.
 
 from elastisim_python.types import Job, JobState, JobType, Node, NodeType, NodeState
-from elastisim_python.interface import pass_algorithm
+from elastisim_python.interface import InvocationType, pass_algorithm
