@@ -1,11 +1,13 @@
 # This file is part of the ElastiSim software.
 #
-# Copyright (c) 2022, Technical University of Darmstadt, Germany
+# Copyright (c) 2023, Technical University of Darmstadt, Germany
 #
 # This software may be modified and distributed under the terms of the 3-Clause
 # BSD License. See the LICENSE file in the base directory for details.
 
+from __future__ import annotations
 from enum import Enum
+from typing import Any
 
 
 class JobType(Enum):
@@ -24,33 +26,33 @@ class JobState(Enum):
 
 
 class Job:
-    identifier = None
-    type = None
-    state = None
-    walltime = None
-    num_nodes = None
-    num_gpus_per_node = None
-    num_nodes_min = None
-    num_nodes_max = None
-    num_gpus_per_node_min = None
-    num_gpus_per_node_max = None
-    submit_time = None
-    start_time = None
-    end_time = None
-    wait_time = None
-    makespan = None
-    turnaround_time = None
-    assigned_nodes = None
-    assigned_node_ids = []
-    assigned_num_gpus_per_node = None
-    arguments = {}
-    attributes = {}
-    total_phase_count = None
-    completed_phases = None
-    modified = False
-    kill_flag = False
+    identifier: int = None
+    type: JobType = None
+    state: JobState = None
+    walltime: float = None
+    num_nodes: int = None
+    num_gpus_per_node: int = None
+    num_nodes_min: int = None
+    num_nodes_max: int = None
+    num_gpus_per_node_min: int = None
+    num_gpus_per_node_max: int = None
+    submit_time: float = None
+    start_time: float = None
+    end_time: float = None
+    wait_time: float = None
+    makespan: float = None
+    turnaround_time: float = None
+    assigned_nodes: list[Node] = None
+    assigned_node_ids: set[int] = []
+    assigned_num_gpus_per_node: int = None
+    arguments: dict[str, str] = {}
+    attributes: dict[str, str] = {}
+    total_phase_count: int = None
+    completed_phases: int = None
+    modified: bool = False
+    kill_flag: bool = False
 
-    def __init__(self, job):
+    def __init__(self, job: dict[str, Any]) -> None:
         self.identifier = job['id']
         self.type = JobType(job['type'])
         self.state = JobState(job['state'])
@@ -78,18 +80,18 @@ class Job:
         self.total_phase_count = job['total_phase_count']
         self.completed_phases = job['completed_phases']
 
-    def __eq__(self, other):
+    def __eq__(self, other: Job) -> bool:
         if isinstance(other, Job):
             return self.identifier == other.identifier
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.identifier)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Job) -> bool:
         return self.identifier < other.identifier
 
-    def assign(self, nodes):
+    def assign(self, nodes: Node | list[Node]) -> None:
         if self.kill_flag:
             raise RuntimeError('Job already flagged to be killed')
         if type(nodes) is not list:
@@ -98,7 +100,7 @@ class Job:
         self.assigned_nodes.extend([node for node in nodes if node.identifier not in self.assigned_node_ids])
         self.assigned_node_ids.update([node.identifier for node in nodes])
 
-    def remove(self, nodes):
+    def remove(self, nodes: Node | list[Node]) -> None:
         if self.kill_flag:
             raise RuntimeError('Job already flagged to be killed')
         if type(nodes) is not list:
@@ -107,55 +109,13 @@ class Job:
         self.assigned_nodes = [node for node in self.assigned_nodes if node not in nodes]
         self.assigned_node_ids.difference_update([node.identifier for node in nodes])
 
-    def kill(self):
+    def kill(self) -> None:
         self.modified = True
         self.kill_flag = True
 
-    def assign_num_gpus_per_node(self, assigned_num_gpus_per_node):
+    def assign_num_gpus_per_node(self, assigned_num_gpus_per_node: int) -> None:
         self.assigned_num_gpus_per_node = assigned_num_gpus_per_node
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Union[int, list[int], bool]]:
         return dict(id=self.identifier, assigned_node_ids=[node.identifier for node in self.assigned_nodes],
                     assigned_num_gpus_per_node=self.assigned_num_gpus_per_node, kill_flag=self.kill_flag)
-
-
-class GpuState(Enum):
-    FREE = 0
-    ALLOCATED = 1
-
-
-class Gpu:
-    identifier = None
-    state = None
-
-    def __init__(self, gpu):
-        self.identifier = gpu['id']
-        self.state = GpuState(gpu['state'])
-
-
-class NodeType(Enum):
-    COMPUTE_NODE = 0
-    COMPUTE_NODE_WITH_BB = 1
-    COMPUTE_NODE_WIDE_STRIPED_BB = 2
-
-
-class NodeState(Enum):
-    FREE = 0
-    ALLOCATED = 1
-    RESERVED = 2
-
-
-class Node:
-    identifier = None
-    type = None
-    state = None
-    assigned_job_ids = None
-    gpus = None
-
-    def __init__(self, node):
-        self.identifier = node['id']
-        self.type = NodeType(node['type'])
-        self.state = NodeState(node['state'])
-        self.assigned_jobs = None
-        self.assigned_job_ids = set(node['assigned_jobs'])
-        self.gpus = [Gpu(gpu) for gpu in node['gpus']]

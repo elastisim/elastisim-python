@@ -7,6 +7,8 @@
 
 import zmq
 from enum import Enum
+from typing import Callable, Any
+from zmq import Socket, Context
 
 from elastisim_python import Job, Node
 
@@ -25,28 +27,40 @@ class CommunicationCode(Enum):
     ZMQ_FINALIZE = 0xFFEC44FF
 
 
-def link(jobs, nodes):
-    for job in jobs:
+def link(modified_jobs: list[Job], modified_nodes: list[Node], jobs: list[Job], nodes: list[Node]) -> None:
+    for job in modified_jobs:
         job.assigned_nodes = [nodes[node_id] for node_id in job.assigned_node_ids]
-    for node in nodes:
+    for node in modified_nodes:
         node.assigned_jobs = [jobs[job_id] for job_id in node.assigned_job_ids]
 
 
-def pass_algorithm(schedule, url):
-    context = zmq.Context()
-    socket = context.socket(zmq.PAIR)
+def pass_algorithm(schedule: Callable[[list[Job], list[Node], dict[str, Any]], None], url: str) -> None:
+    context: Context = zmq.Context()
+    socket: Socket = context.socket(zmq.PAIR)
     socket.connect(url)
+    jobs = []
+    nodes = []
     while True:
         message = socket.recv_json()
         code = CommunicationCode(message['code'])
+        modified_jobs = []
+        modified_nodes = []
         if code == CommunicationCode.ZMQ_INVOKE_SCHEDULING:
-            jobs = []
-            for job in message['jobs']:
-                jobs.append(Job(job))
-            nodes = []
-            for node in message['nodes']:
-                nodes.append(Node(node))
-            link(jobs, nodes)
+            for json_job in message['jobs']:
+                job = Job(json_job)
+                if job.identifier >= len(jobs):
+                    jobs.append(job)
+                else:
+                    jobs[job.identifier] = job
+                modified_jobs.append(job)
+            for json_node in message['nodes']:
+                node = Node(json_node)
+                if node.identifier >= len(nodes):
+                    nodes.append(node)
+                else:
+                    nodes[node.identifier] = node
+                modified_nodes.append(node)
+            link(modified_jobs, modified_nodes, jobs, nodes)
             system = {}
             system['time'] = message['time']
             system['invocation_type'] = InvocationType(message['invocation_type'])
