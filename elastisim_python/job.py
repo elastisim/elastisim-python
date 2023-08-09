@@ -47,6 +47,7 @@ class Job:
     assigned_num_gpus_per_node: int = None
     arguments: dict[str, str] = {}
     attributes: dict[str, str] = {}
+    runtime_arguments: dict[str, Any] = {}
     total_phase_count: int = None
     completed_phases: int = None
     modified: bool = False
@@ -77,6 +78,8 @@ class Job:
             self.arguments = job['arguments']
         if 'attributes' in job:
             self.attributes = job['attributes']
+        if 'runtime_arguments' in job:
+            self.runtime_arguments = job['runtime_arguments']
         self.total_phase_count = job['total_phase_count']
         self.completed_phases = job['completed_phases']
 
@@ -116,6 +119,12 @@ class Job:
     def assign_num_gpus_per_node(self, assigned_num_gpus_per_node: int) -> None:
         self.assigned_num_gpus_per_node = assigned_num_gpus_per_node
 
-    def to_dict(self) -> dict[str, Union[int, list[int], bool]]:
-        return dict(id=self.identifier, assigned_node_ids=[node.identifier for node in self.assigned_nodes],
-                    assigned_num_gpus_per_node=self.assigned_num_gpus_per_node, kill_flag=self.kill_flag)
+    def update_runtime_argument(self, key: str, value: Any):
+        self.runtime_arguments[key] = str(value)
+
+    def to_dict(self) -> dict[str, int | list[int] | bool]:
+        json_dict = dict(id=self.identifier, assigned_node_ids=[node.identifier for node in self.assigned_nodes],
+                         assigned_num_gpus_per_node=self.assigned_num_gpus_per_node, kill_flag=self.kill_flag,
+                         runtime_arguments=self.runtime_arguments)
+        self.modified = False
+        return json_dict
