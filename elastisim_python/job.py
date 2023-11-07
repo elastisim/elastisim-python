@@ -14,6 +14,8 @@ class JobType(Enum):
     RIGID = 0
     MOLDABLE = 1
     MALLEABLE = 2
+    EVOLVING = 3
+    ADAPTIVE = 4
 
 
 class JobState(Enum):
@@ -51,6 +53,7 @@ class Job:
     total_phase_count: int = None
     completed_phases: int = None
     modified: bool = False
+    modified_runtime_args: bool = False
     kill_flag: bool = False
 
     def __init__(self, job: dict[str, Any]) -> None:
@@ -120,11 +123,16 @@ class Job:
         self.assigned_num_gpus_per_node = assigned_num_gpus_per_node
 
     def update_runtime_argument(self, key: str, value: Any):
+        self.modified = True
+        self.modified_runtime_args = True
         self.runtime_arguments[key] = str(value)
 
     def to_dict(self) -> dict[str, int | list[int] | bool]:
         json_dict = dict(id=self.identifier, assigned_node_ids=[node.identifier for node in self.assigned_nodes],
                          assigned_num_gpus_per_node=self.assigned_num_gpus_per_node, kill_flag=self.kill_flag,
-                         runtime_arguments=self.runtime_arguments)
+                         modified_runtime_args=self.modified_runtime_args)
+        if self.modified_runtime_args:
+            json_dict['runtime_arguments'] = self.runtime_arguments
+            self.modified_runtime_args = False
         self.modified = False
         return json_dict

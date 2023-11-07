@@ -19,6 +19,7 @@ class InvocationType(Enum):
     INVOKE_JOB_COMPLETED = 2
     INVOKE_JOB_KILLED = 3
     INVOKE_SCHEDULING_POINT = 4
+    INVOKE_EVOLVING_REQUEST = 5
 
 
 class CommunicationCode(Enum):
@@ -62,14 +63,16 @@ def pass_algorithm(schedule: Callable[[list[Job], list[Node], dict[str, Any]], N
                 modified_nodes.append(node)
             link(modified_jobs, modified_nodes, jobs, nodes)
             system = {}
-            system['time'] = message['time']
-            system['invocation_type'] = InvocationType(message['invocation_type'])
-            if system['invocation_type'] != InvocationType.INVOKE_PERIODIC:
-                system['job'] = jobs[message['job_id']]
-            system['pfs_read_bw'] = message['pfs_read_bw']
-            system['pfs_write_bw'] = message['pfs_write_bw']
-            system['pfs_read_utilization'] = message['pfs_read_utilization']
-            system['pfs_write_utilization'] = message['pfs_write_utilization']
+            for key, _ in message.items():
+                if key == 'invocation_type':
+                    invocation_type = InvocationType(message['invocation_type'])
+                    system['invocation_type'] = invocation_type
+                    if invocation_type != InvocationType.INVOKE_PERIODIC:
+                        system['job'] = jobs[message['job_id']]
+                        if invocation_type == InvocationType.INVOKE_EVOLVING_REQUEST:
+                            system['evolving_request'] = int(message['evolving_request'])
+                else:
+                    system[key] = message[key]
             schedule(jobs, nodes, system)
             message = dict(code=CommunicationCode.ZMQ_SCHEDULED.value,
                            jobs=[job.to_dict() for job in jobs if job.modified])
