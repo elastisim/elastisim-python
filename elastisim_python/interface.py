@@ -20,6 +20,7 @@ class InvocationType(Enum):
     INVOKE_JOB_KILLED = 3
     INVOKE_SCHEDULING_POINT = 4
     INVOKE_EVOLVING_REQUEST = 5
+    INVOKE_RECONFIGURATION = 6
 
 
 class CommunicationCode(Enum):
