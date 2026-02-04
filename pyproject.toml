@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "elastisim_python"
+version = "0.1.0"
+description = "Python bindings for the ElastiSim simulator"
+requires-python = ">=3.9"
+authors = [ { name = "Technical University of Darmstadt" } ]
+license = { text = "BSD-3-Clause" }
+dependencies = [ "pyzmq" ]
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: BSD License",
+	"Operating System :: OS Independent",
+]
+
