@@ -9,7 +9,7 @@ description = "Python bindings for the ElastiSim simulator"
 requires-python = ">=3.9"
 authors = [ { name = "Technical University of Darmstadt" } ]
 license = { text = "BSD-3-Clause" }
-dependencies = [ "pyzmq" ]
+dependencies = [ "pyzmq", "msgpack" ]
 classifiers = [
 	"Programming Language :: Python :: 3",
 	"License :: OSI Approved :: BSD License",
