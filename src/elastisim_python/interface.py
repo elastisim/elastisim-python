@@ -9,8 +9,10 @@ import zmq
 from enum import Enum
 from typing import Callable, Any
 from zmq import Socket, Context
+import msgpack
 
-from elastisim_python import Job, Node
+from .job import Job
+from .node import Node
 
 
 class InvocationType(Enum):
@@ -28,56 +30,46 @@ class CommunicationCode(Enum):
     ZMQ_SCHEDULED = 0xFFEC4401
     ZMQ_FINALIZE = 0xFFEC44FF
 
-
-def link(modified_jobs: list[Job], modified_nodes: list[Node], jobs: list[Job], nodes: list[Node]) -> None:
-    for job in modified_jobs:
-        job.assigned_nodes = [nodes[node_id] for node_id in job.assigned_node_ids]
-    for node in modified_nodes:
-        node.assigned_jobs = [jobs[job_id] for job_id in node.assigned_job_ids]
-
-
 def pass_algorithm(schedule: Callable[[list[Job], list[Node], dict[str, Any]], None], url: str) -> None:
     context: Context = zmq.Context()
     socket: Socket = context.socket(zmq.PAIR)
     socket.connect(url)
-    jobs = []
-    nodes = []
+    jobs: list[Job] = []
+    nodes: list[Node] = []
     while True:
-        message = socket.recv_json()
+        message: dict[str, Any] = msgpack.unpackb(socket.recv())
         code = CommunicationCode(message['code'])
-        modified_jobs = []
-        modified_nodes = []
         if code == CommunicationCode.ZMQ_INVOKE_SCHEDULING:
             for json_job in message['jobs']:
-                job = Job(json_job)
-                if job.identifier >= len(jobs):
+                identifier: int = json_job['id']
+                if identifier >= len(jobs):
+                    job = Job(json_job)
                     jobs.append(job)
                 else:
-                    jobs[job.identifier] = job
-                modified_jobs.append(job)
+                    job = jobs[identifier]
+                    job.update(json_job, nodes)
             for json_node in message['nodes']:
-                node = Node(json_node)
-                if node.identifier >= len(nodes):
+                identifier: int = json_node['id']
+                if identifier >= len(nodes):
+                    node = Node(json_node)
                     nodes.append(node)
                 else:
-                    nodes[node.identifier] = node
-                modified_nodes.append(node)
-            link(modified_jobs, modified_nodes, jobs, nodes)
-            system = {}
-            for key, _ in message.items():
-                if key == 'invocation_type':
-                    invocation_type = InvocationType(message['invocation_type'])
-                    system['invocation_type'] = invocation_type
-                    if invocation_type != InvocationType.INVOKE_PERIODIC:
-                        system['job'] = jobs[message['job_id']]
-                        if invocation_type == InvocationType.INVOKE_EVOLVING_REQUEST:
-                            system['evolving_request'] = int(message['evolving_request'])
-                else:
-                    system[key] = message[key]
+                    node = nodes[identifier]
+                    node.update(json_node, jobs)
+            system = dict(message)
+            invocation_type = InvocationType(message['invocation_type'])
+            system['invocation_type'] = invocation_type
+            if invocation_type != InvocationType.INVOKE_PERIODIC:
+                system['job'] = jobs[message['job_id']]
+                if invocation_type == InvocationType.INVOKE_EVOLVING_REQUEST:
+                    system['evolving_request'] = int(message['evolving_request'])
             schedule(jobs, nodes, system)
             message = dict(code=CommunicationCode.ZMQ_SCHEDULED.value,
                            jobs=[job.to_dict() for job in jobs if job.modified])
-            socket.send_json(message)
+            socket.send(msgpack.packb(message))
         elif code == CommunicationCode.ZMQ_FINALIZE:
             break
+        else:
+            raise ValueError(
+                f'Received unknown code {code} from simulation engine')
     socket.close()
