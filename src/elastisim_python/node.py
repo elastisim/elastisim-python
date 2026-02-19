@@ -6,8 +6,10 @@
 # BSD License. See the LICENSE file in the base directory for details.
 
 from __future__ import annotations
+
 from enum import Enum
 from typing import Any, TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     from .job import Job

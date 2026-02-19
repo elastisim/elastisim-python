@@ -5,14 +5,18 @@
 # This software may be modified and distributed under the terms of the 3-Clause
 # BSD License. See the LICENSE file in the base directory for details.
 
-import zmq
+import logging
 from enum import Enum
 from typing import Callable, Any
-from zmq import Socket, Context
+
 import msgpack
+import zmq
 
 from .job import Job
 from .node import Node
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvocationType(Enum):
@@ -31,15 +35,17 @@ class CommunicationCode(Enum):
     ZMQ_FINALIZE = 0xFFEC44FF
 
 def pass_algorithm(schedule: Callable[[list[Job], list[Node], dict[str, Any]], None], url: str) -> None:
-    context: Context = zmq.Context()
-    socket: Socket = context.socket(zmq.PAIR)
+    context: zmq.Context = zmq.Context()
+    socket: zmq.Socket = context.socket(zmq.PAIR)
     socket.connect(url)
+    logger.info('Connected to the simulation engine')
     jobs: list[Job] = []
     nodes: list[Node] = []
     while True:
         message: dict[str, Any] = msgpack.unpackb(socket.recv())
         code = CommunicationCode(message['code'])
         if code == CommunicationCode.ZMQ_INVOKE_SCHEDULING:
+            logger.debug('Received algorithm invocation at simulation time %s s', message['time'])
             for json_job in message['jobs']:
                 identifier: int = json_job['id']
                 if identifier >= len(jobs):
@@ -68,8 +74,9 @@ def pass_algorithm(schedule: Callable[[list[Job], list[Node], dict[str, Any]], N
                            jobs=[job.to_dict() for job in jobs if job.modified])
             socket.send(msgpack.packb(message))
         elif code == CommunicationCode.ZMQ_FINALIZE:
+            logger.info('Received finalization')
             break
         else:
-            raise ValueError(
-                f'Received unknown code {code} from simulation engine')
+            raise ValueError(f'Received unknown code {code} from simulation engine')
     socket.close()
+    logger.info('Connection closed')
